@@ -20,6 +20,8 @@ function Turtle() {
 
     this.drawing = true;
 
+    this.color = "#fff";
+
     this.program = [];
 }
 
@@ -44,7 +46,7 @@ Turtle.prototype.execute = function(ctx, step) {
         var newY = this.y + step.length * Math.sin(this.angle);
 
         if (this.drawing) {
-            ctx.strokeStyle = "#fff";
+            ctx.strokeStyle = this.color;
             ctx.lineWidth = 1;
 
             ctx.beginPath();
@@ -62,6 +64,8 @@ Turtle.prototype.execute = function(ctx, step) {
         this.drawing = false;
     } else if (step.type === "place") {
         this.drawing = true;
+    } else if (step.type === "color") {
+        this.color = "rgb(" + step.r + "," + step.g + "," + step.b + ")";
     } else {
         throw new Error("Got invalid step of type: " + step.type);
     }
@@ -118,6 +122,15 @@ Turtle.prototype.lift = function() {
 Turtle.prototype.place = function() {
     this.program.push({
         type: "place"
+    });
+};
+
+Turtle.prototype.setColor = function(r, g, b) {
+    this.program.push({
+        type: "color",
+        r: r,
+        g: g,
+        b: b
     });
 };
 
@@ -304,6 +317,27 @@ WhileInstruction.tryParse = function(line) {
         });
 };
 
+function ColorInstruction(r, g, b) {
+    this.r = r;
+    this.g = g;
+    this.b = b;
+}
+
+ColorInstruction.prototype.execute = function(turtle, state) {
+    turtle.setColor(this.r.get(state), this.g.get(state), this.b.get(state));
+};
+
+ColorInstruction.tryParse = function(line) {
+    return new Parser(line)
+        .tryParse(singleWordParser("COLOR")).then(expressionParse).then(expressionParse)
+            .then(expressionParse).then(commentParse)
+        .or(singleWordParser("C")).then(expressionParse).then(expressionParse)
+            .then(expressionParse).then(commentParse)
+        .complete(function(values) {
+            return new ColorInstruction(values[1], values[2], values[3]);
+        });
+};
+
 function EmptyInstruction() {}
 
 EmptyInstruction.prototype.execute = function() {};
@@ -323,6 +357,7 @@ var instructionParsers = [
     EndInstruction,
     IfInstruction,
     WhileInstruction,
+    ColorInstruction,
     EmptyInstruction
 ];
 
